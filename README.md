@@ -23,7 +23,7 @@
 
 ## Install
 
-Download EarTrumpet from the [Microsoft Store](https://www.microsoft.com/en-us/p/eartrumpet/9nblggh516xp)
+Download EarTrumpet from the [releases](https://github.com/Nonononoki/EarTrumpet/releases) or from the [Microsoft Store](https://www.microsoft.com/en-us/p/eartrumpet/9nblggh516xp)
 
 ## Supported operating systems ##
 - Windows 10 1803 (April 2018 Update)
