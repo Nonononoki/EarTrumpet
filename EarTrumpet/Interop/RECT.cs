@@ -9,5 +9,7 @@ namespace EarTrumpet.Interop
         public int Top;
         public int Right;
         public int Bottom;
+
+        public bool Contains(System.Drawing.Point pt) => pt.X >= Left && pt.X <= Right && pt.Y >= Top && pt.Y <= Bottom;
     }
 }

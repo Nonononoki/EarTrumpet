@@ -5,14 +5,13 @@
              xmlns:Theme="clr-namespace:EarTrumpet.UI.Themes"
              xmlns:b="clr-namespace:EarTrumpet.UI.Behaviors"
              xmlns:bcl="clr-namespace:System;assembly=mscorlib"
-             xmlns:conv="clr-namespace:EarTrumpet.UI.Converters"
+             xmlns:ctl="clr-namespace:EarTrumpet.UI.Controls"
              xmlns:gif="http://wpfanimatedgif.codeplex.com"
              xmlns:resx="clr-namespace:EarTrumpet.Properties"
-             xmlns:ui="clr-namespace:EarTrumpet.UI"
              xmlns:views="clr-namespace:EarTrumpet.UI.Views"
              xmlns:vm="clr-namespace:EarTrumpet.UI.ViewModels"
              xmlns:win="clr-namespace:System.Windows;assembly=PresentationFramework"
-             Startup="Application_Startup">
+             Startup="OnAppStartup">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -94,8 +93,7 @@
                 </Theme:Manager.References>
             </Theme:Manager>
 
-            <ui:MenuItemTemplateSelector x:Key="MenuSelector" />
-            <conv:IconConverter x:Key="iconConverter" />
+            <ctl:MenuItemTemplateSelector x:Key="MenuSelector" />
 
             <Thickness x:Key="PopupBorderThickness">1</Thickness>
             <bcl:Double x:Key="WindowBlurRadius">10</bcl:Double>
@@ -106,7 +104,7 @@
             <Thickness x:Key="VolumeTextMargin">-1,0,0,0</Thickness>
             <Thickness x:Key="NoItemsPaneMargin">24</Thickness>
             <bcl:Double x:Key="MutedOpacity">0.4</bcl:Double>
-            
+
             <Style x:Key="Windows10FocusVisualStyle">
                 <Setter Property="Control.Template">
                     <Setter.Value>
@@ -196,7 +194,7 @@
                                     <MultiTrigger.Conditions>
                                         <Condition Property="IsMouseOver" Value="True" />
                                     </MultiTrigger.Conditions>
-                                    <Setter TargetName="Bd" Property="Theme:Brush.Background" Value="Theme={Theme}ListLow" />
+                                    <Setter TargetName="Bd" Property="Theme:Brush.Background" Value="Theme={Theme}ListLow, HighContrast=Highlight" />
                                 </MultiTrigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -218,15 +216,17 @@
                 </Setter>
             </Style>
             <Style x:Key="{x:Type ToolTip}" TargetType="ToolTip">
-                <Setter Property="Theme:Brush.Background" Value="Theme={Theme}ChromeMediumLow" />
-                <Setter Property="Theme:Brush.Foreground" Value="Theme=ApplicationText{Theme}Theme" />
-                <Setter Property="Theme:Brush.BorderBrush" Value="Theme={Theme}ChromeDisabledLow" />
+                <Setter Property="Padding" Value="4" />
+                <Setter Property="Theme:Brush.Background" Value="Theme={Theme}ChromeMediumLow, HighContrast=Window" />
+                <Setter Property="Theme:Brush.Foreground" Value="Theme=ApplicationText{Theme}Theme, HighContrast=WindowText" />
+                <Setter Property="Theme:Brush.BorderBrush" Value="Theme={Theme}ChromeDisabledLow, HighContrast=WindowFrame" />
             </Style>
             <Style x:Key="CaptionButtonStyle" TargetType="Button">
                 <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
                 <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
                 <Setter Property="FontSize" Value="10" />
                 <Setter Property="FontWeight" Value="ExtraLight" />
+                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                 <Setter Property="Width" Value="46" />
                 <Setter Property="Height" Value="31" />
                 <Setter Property="IsTabStop" Value="False" />
@@ -252,9 +252,11 @@
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
                         <Setter Property="Theme:Brush.Background" Value="Theme={Theme}ListLow, HighContrast=Highlight" />
+                        <Setter Property="Theme:Brush.Foreground" Value="Theme=ApplicationText{Theme}Theme, HighContrast=HighlightText" />
                     </Trigger>
                     <Trigger Property="IsPressed" Value="True">
                         <Setter Property="Theme:Brush.Background" Value="Theme={Theme}ListMedium, HighContrast=Highlight" />
+                        <Setter Property="Theme:Brush.Foreground" Value="Theme=ApplicationText{Theme}Theme, HighContrast=HighlightText" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
@@ -262,14 +264,18 @@
                    BasedOn="{StaticResource CaptionButtonStyle}"
                    TargetType="Button">
                 <Setter Property="Margin" Value="0,1,0,0" />
+                <Setter Property="Content" Value="&#xE8BB;" />
                 <Style.Triggers>
+                    <DataTrigger Binding="{Binding Source={StaticResource ThemeManager}, Path=IsHighContrast}" Value="True">
+                        <Setter Property="Content" Value="&#xEF2C;" />
+                    </DataTrigger>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Theme:Brush.Foreground" Value="ApplicationTextDarkTheme" />
-                        <Setter Property="Theme:Brush.Background" Value="#FFE81123" />
+                        <Setter Property="Theme:Brush.Foreground" Value="Theme=ApplicationTextDarkTheme, HighContrast=HighlightText" />
+                        <Setter Property="Theme:Brush.Background" Value="Theme=#FFE81123, HighContrast=Highlight" />
                     </Trigger>
                     <Trigger Property="IsPressed" Value="True">
-                        <Setter Property="Theme:Brush.Foreground" Value="Light=Text, Dark=ApplicationTextLightTheme" />
-                        <Setter Property="Theme:Brush.Background" Value="#F1707A" />
+                        <Setter Property="Theme:Brush.Foreground" Value="Light=Text, Dark=ApplicationTextLightTheme, HighContrast=HighlightText" />
+                        <Setter Property="Theme:Brush.Background" Value="Theme=#F1707A, HighContrast=Highlight" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
@@ -333,10 +339,10 @@
                                         <Thumb Name="SliderThumb">
                                             <Thumb.Style>
                                                 <Style BasedOn="{StaticResource SliderThumbStyle}" TargetType="{x:Type Thumb}">
-                                                    <Setter Property="Theme:Brush.Foreground" Value=":Theme=Control{Theme}SliderTrackFillRest, Flyout:Theme=SystemAccent" />
+                                                    <Setter Property="Theme:Brush.Foreground" Value=":Theme=Control{Theme}SliderTrackFillRest, Flyout:Theme=SystemAccent, :HighContrast=ControlLight, Flyout:HighContrast=ControlLight" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Path=IsMouseOver, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
-                                                            <Setter Property="Theme:Brush.Foreground" Value="Theme=Control{Theme}SliderThumbHover" />
+                                                            <Setter Property="Theme:Brush.Foreground" Value="Theme=Control{Theme}SliderThumbHover, HighContrast=Highlight" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -442,13 +448,19 @@
                 <Setter Property="WindowStyle" Value="None" />
                 <Setter Property="WindowChrome.WindowChrome">
                     <Setter.Value>
-                        <WindowChrome CaptionHeight="31" ResizeBorderThickness="4" />
+                        <WindowChrome CaptionHeight="31" ResizeBorderThickness="{x:Static win:SystemParameters.WindowResizeBorderThickness}" />
                     </Setter.Value>
                 </Setter>
                 <Setter Property="Theme:Brush.BorderBrush" Value="ActiveWindowBorder" />
                 <Style.Triggers>
                     <Trigger Property="IsActive" Value="False">
                         <Setter Property="Theme:Brush.BorderBrush" Value="Transparent" />
+                    </Trigger>
+                    <DataTrigger Binding="{Binding Source={StaticResource ThemeManager}, Path=IsHighContrast}" Value="True">
+                        <Setter Property="BorderThickness" Value="0" />
+                    </DataTrigger>
+                    <Trigger Property="WindowState" Value="Maximized">
+                        <Setter Property="BorderThickness" Value="0" />
                     </Trigger>
                     <DataTrigger Binding="{Binding Source={StaticResource ThemeManager}, Path=IsSystemLightTheme}" Value="False">
                         <Setter Property="Icon" Value="pack://application:,,,/EarTrumpet;component/Assets/Tray.ico" />
@@ -578,6 +590,7 @@
             </Style>
             <Style x:Key="{x:Type MenuItem}" TargetType="{x:Type MenuItem}">
                 <Setter Property="OverridesDefaultStyle" Value="True" />
+                <Setter Property="Theme:Brush.Foreground" Value="Text" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type MenuItem}">
@@ -614,7 +627,8 @@
                                             Height="14"
                                             BorderThickness="1"
                                             Visibility="Collapsed">
-                                        <TextBlock Theme:Brush.Foreground="Theme={Theme}BaseMedium, HighContrast=MenuText"
+                                        <TextBlock x:Name="GlyphText"
+                                                   Theme:Brush.Foreground="Theme={Theme}BaseMedium, HighContrast=MenuText"
                                                    FontFamily="Segoe MDL2 Assets"
                                                    SnapsToDevicePixels="False"
                                                    Text="&#xE0E3;" />
@@ -652,12 +666,13 @@
                                     <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
                                 </Trigger>
                                 <Trigger Property="IsHighlighted" Value="True">
-                                    <Setter TargetName="Border" Property="Theme:Brush.Background" Value="Theme={Theme}ListLow, HighContrast=Highlight" />
                                     <Setter Property="Theme:Brush.Foreground" Value="Theme={Theme}BaseHigh, HighContrast=HighlightText" />
+                                    <Setter TargetName="Border" Property="Theme:Brush.Background" Value="Theme={Theme}ListLow, HighContrast=Highlight" />
                                     <Setter TargetName="CheckMark" Property="Theme:Brush.Foreground" Value="Theme={Theme}BaseMedium, HighContrast=HighlightText" />
+                                    <Setter TargetName="GlyphText" Property="Theme:Brush.Foreground" Value="Theme={Theme}BaseMedium, HighContrast=HighlightText" />
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Theme:Brush.Foreground" Value="Theme={Theme}BaseMediumLow" />
+                                    <Setter Property="Theme:Brush.Foreground" Value="Theme={Theme}BaseMediumLow, HighContrast=GrayText" />
                                 </Trigger>
                                 <Trigger Property="Role" Value="SubmenuHeader">
                                     <Setter TargetName="OpenGlyph" Property="Visibility" Value="Visible" />
@@ -970,10 +985,10 @@
             <Style TargetType="{x:Type Hyperlink}">
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Theme:Brush.Foreground" Value="Theme={Theme}BaseMedium, HighContrast=HotTrack" />
+                        <Setter Property="Theme:Brush.Foreground" Value="Theme={Theme}BaseMedium, HighContrast=Text" />
                     </Trigger>
                 </Style.Triggers>
-                <Setter Property="Theme:Brush.Foreground" Value="Theme=SystemAccent" />
+                <Setter Property="Theme:Brush.Foreground" Value="Theme=SystemAccent, HighContrast=HotTrack" />
                 <Setter Property="TextBlock.TextDecorations" Value="{x:Null}" />
                 <Setter Property="FontSize" Value="15" />
                 <Setter Property="FocusVisualStyle" Value="{StaticResource LargeWindows10FocusVisualStyle}" />
@@ -1480,23 +1495,24 @@
                                     </Setter.Value>
                                 </Setter>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Icon, Converter={StaticResource iconConverter}}" Value="{x:Null}">
+                                    <DataTrigger Binding="{Binding Source, ElementName=AppIcon}" Value="{x:Null}">
                                         <Setter Property="Theme:Brush.Background" Value="SystemAccent" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
                         <Grid>
-                            <Image Width="{DynamicResource Mutable_AppIconSize}"
-                                   Height="{DynamicResource Mutable_AppIconSize}"
-                                   Source="{Binding Icon, Converter={StaticResource iconConverter}, Mode=OneTime}"
-                                   Stretch="Fill" />
+                            <ctl:ImageEx x:Name="AppIcon"
+                                         Width="{DynamicResource Mutable_AppIconSize}"
+                                         Height="{DynamicResource Mutable_AppIconSize}"
+                                         SourceEx="{Binding Icon}"
+                                         Stretch="Fill" />
                             <Border>
                                 <Border.Style>
                                     <Style TargetType="{x:Type Border}">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Icon, Converter={StaticResource iconConverter}}" Value="{x:Null}">
+                                            <DataTrigger Binding="{Binding Source, ElementName=AppIcon}" Value="{x:Null}">
                                                 <Setter Property="Visibility" Value="Visible" />
                                             </DataTrigger>
                                         </Style.Triggers>

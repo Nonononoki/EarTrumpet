@@ -1,4 +1,5 @@
 ﻿using EarTrumpet.DataModel.Audio;
+using EarTrumpet.Diagnosis;
 using EarTrumpet.Extensions;
 using EarTrumpet.Interop;
 using EarTrumpet.Interop.MMDeviceAPI;
@@ -79,7 +80,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
                 catch (Exception ex)
                 {
                     // Even through we're going to be broken, show the tray icon so the user can collect debug data.
-                    AppTrace.LogWarning(ex);
+                    ErrorReporter.LogWarning(ex);
 
                     _dispatcher.Invoke((Action)(() =>
                     {
@@ -274,7 +275,13 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
 
         public void SetDefaultEndPoint(string id, int pid)
         {
-            _policyConfigService.SetDefaultEndPoint(id, pid);
+            // Note: We found it unexpected that SetDefaultEndPoint
+            // would accept an id for an 'invalid' device and then 
+            // no audio will be heard from any device for the given pid.
+            if (id == null || TryFind(id, out _))
+            {
+                _policyConfigService.SetDefaultEndPoint(id, pid);
+            }
         }
 
         public string GetDefaultEndPoint(int processId)

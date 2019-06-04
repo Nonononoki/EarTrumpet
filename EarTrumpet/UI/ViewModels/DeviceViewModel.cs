@@ -1,6 +1,7 @@
 ﻿using EarTrumpet.DataModel.Audio;
 using EarTrumpet.DataModel.WindowsAudio;
 using EarTrumpet.Extensions;
+using EarTrumpet.Interop;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -10,11 +11,21 @@ namespace EarTrumpet.UI.ViewModels
 {
     public class DeviceViewModel : AudioSessionViewModel, IDeviceViewModel
     {
+        public enum DeviceIconKind
+        {
+            Mute,
+            Bar1,
+            Bar2,
+            Bar3,
+            Microphone,
+        }
+
         public string DisplayName => _device.DisplayName;
+        public string AccessibleName => IsMuted ? Properties.Resources.AppOrDeviceMutedFormatAccessibleText.Replace("{Name}", DisplayName) :
+            Properties.Resources.AppOrDeviceFormatAccessibleText.Replace("{Name}", DisplayName).Replace("{Volume}", Volume.ToString());
         public string DeviceDescription => ((IAudioDeviceWindowsAudio)_device).DeviceDescription;
         public string EnumeratorName => ((IAudioDeviceWindowsAudio)_device).EnumeratorName;
         public string InterfaceName => ((IAudioDeviceWindowsAudio)_device).InterfaceName;
-
         public ObservableCollection<IAppItemViewModel> Apps { get; }
 
         public bool IsDisplayNameVisible
@@ -80,10 +91,12 @@ namespace EarTrumpet.UI.ViewModels
                 e.PropertyName == nameof(_device.Volume))
             {
                 UpdateMasterVolumeIcon();
+                RaisePropertyChanged(nameof(AccessibleName));
             }
             else if (e.PropertyName == nameof(_device.DisplayName))
             {
                 RaisePropertyChanged(nameof(DisplayName));
+                RaisePropertyChanged(nameof(AccessibleName));
             }
         }
 
@@ -210,11 +223,24 @@ namespace EarTrumpet.UI.ViewModels
             }
         }
 
-        public void MakeDefaultDevice()
+        public SndVolSSO.IconId GetSndVolIcon()
         {
-            _deviceManager.Default = _device;
+            switch (IconKind)
+            {
+                case DeviceIconKind.Mute:
+                    return SndVolSSO.IconId.Muted;
+                case DeviceIconKind.Bar1:
+                    return SndVolSSO.IconId.SpeakerOneBar;
+                case DeviceIconKind.Bar2:
+                    return SndVolSSO.IconId.SpeakerTwoBars;
+                case DeviceIconKind.Bar3:
+                    return SndVolSSO.IconId.SpeakerThreeBars;
+                default: throw new NotImplementedException(IconKind.ToString());
+            }
         }
 
+        public void MakeDefaultDevice() => _deviceManager.Default = _device;
+        public void IncrementVolume(int delta) => Volume += delta;
         public override string ToString() => string.Format(IsMuted ? Properties.Resources.AppOrDeviceMutedFormatAccessibleText : Properties.Resources.AppOrDeviceFormatAccessibleText, DisplayName, Volume);
     }
 }
