@@ -1,12 +1,19 @@
 # Changelog
 
+## 2.1.3.0
+- Fixed a crash causing EarTrumpet disappear on startup
+- Fixed various potential leaks
+- Added a help dialog to assist when EarTrumpet can't start due to broken fonts
+
 ## 2.1.2.0
 - Fixed icon handle leak that caused a crash
 - Fixed hotkeys not being properly unregistered
+- Fixed arrow keys changing the default device volume
 - Fixed High Contrast theme colors
 - Fixed settings window covering the Taskbar when maximized
 - Tray icon should remain in place after updates going forward
 - Tray and app icons will now scale correctly
+- Tray icon supports scrolling without opening the flyout
 - Removed unwanted metadata from telemetry
 
 ## 2.1.1.0
@@ -28,7 +35,7 @@
 - Additional bugfixes
 
 ## 2.0.8.0
-- Changed grouping behavior to key off app install paths vice executable name
+- Changed grouping behavior to key off app install path vs. executable name
 - Disabled flyout window blur when not visible to ensure it doesn't appear in task switcher
 - Fixed an issue where the Enhancements tab was missing in playback devices dialog
 - Fixed an issue where the flyout was too tall when the taskbar is configured to auto-hide

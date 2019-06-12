@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 
@@ -38,7 +39,17 @@ namespace EarTrumpet
             if (SingleInstanceAppMutex.TakeExclusivity())
             {
                 Exit += (_, __) => SingleInstanceAppMutex.ReleaseExclusivity();
-                ContinueStartup();
+
+                try
+                {
+                    ContinueStartup();
+                }
+                catch (Exception ex) when (ex.StackTrace.Contains(
+                    "MS.Internal.Text.TextInterface.FontFamily.GetFirstMatchingFont"))
+                {
+                    ErrorReporter.LogWarning(ex);
+                    OnCriticalFontLoadFailure();
+                }
             }
             else
             {
@@ -77,7 +88,7 @@ namespace EarTrumpet
             {
                 if (_settings.UseLegacyIcon)
                 {
-                    icon.Dispose();
+                    icon?.Dispose();
                     icon = IconHelper.LoadIconForTaskbar(SystemSettings.IsSystemLightTheme ? $"{AssetBaseUri}Application.ico" : $"{AssetBaseUri}Tray.ico");
                 }
 
@@ -134,6 +145,28 @@ namespace EarTrumpet
                 viewModel.Close = new RelayCommand(() => dialog.SafeClose());
                 dialog.Show();
             }
+        }
+
+        private void OnCriticalFontLoadFailure()
+        {
+            Trace.WriteLine($"App OnCriticalFontLoadFailure");
+
+            new Thread(() =>
+            {
+                if (MessageBox.Show(
+                    EarTrumpet.Properties.Resources.CriticalFailureFontLookupHelpText,
+                    EarTrumpet.Properties.Resources.CriticalFailureDialogHeaderText,
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Error,
+                    MessageBoxResult.OK) == MessageBoxResult.OK)
+                {
+                    Trace.WriteLine($"App OnCriticalFontLoadFailure OK");
+                    ProcessHelper.StartNoThrow("https://eartrumpet.app/jmp/fixfonts");
+                }
+                Environment.Exit(0);
+            }).Start();
+
+            Thread.CurrentThread.Suspend();
         }
 
         private IEnumerable<ContextMenuItem> GetTrayContextMenuItems()
@@ -211,8 +244,8 @@ namespace EarTrumpet
                     {
                         new EarTrumpetShortcutsPageViewModel(_settings),
                         new EarTrumpetLegacySettingsPageViewModel(_settings),
-                        new EarTrumpetAboutPageViewModel(() => _errorReporter.DisplayDiagnosticData(AddonManager.GetDiagnosticInfo()))
-                    }.ToList());
+                        new EarTrumpetAboutPageViewModel(() => _errorReporter.DisplayDiagnosticData())
+                    });
 
             var allCategories = new List<SettingsCategoryViewModel>();
             allCategories.Add(defaultCategory);
