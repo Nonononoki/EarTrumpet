@@ -22,7 +22,7 @@
 * Growing multi-lingual support
 
 ## Install
-Download EarTrumpet from the [Microsoft Store](https://www.microsoft.com/en-us/p/eartrumpet/9nblggh516xp)
+Download EarTrumpet from the releases: https://github.com/Nonononoki/EarTrumpet/releases/latest
 
 ## Documentation
 * [Technical Information](./EarTrumpet/README.md)
