@@ -20,9 +20,9 @@ namespace EarTrumpet.UI.Helpers
         public event EventHandler<InputType> SecondaryInvoke;
         public event EventHandler<InputType> TertiaryInvoke;
         public event EventHandler<int> Scrolled;
-        
+
+        public IShellNotifyIconSource IconSource { get; private set; }
         public bool IsMouseOver { get; private set; }
-        public TaskbarIconSource IconSource { get; private set; }
 
         public bool IsVisible
         {
@@ -42,17 +42,17 @@ namespace EarTrumpet.UI.Helpers
 
         private readonly Func<Guid> _getIdentity;
         private readonly Action _resetIdentity;
-        private Win32Window _window;
+        private readonly Win32Window _window;
+        private readonly DispatcherTimer _invalidationTimer;
         private bool _isCreated;
         private bool _isVisible;
         private bool _isListeningForInput;
         private string _text;
         private RECT _iconLocation;
         private System.Drawing.Point _cursorPosition;
-        private DispatcherTimer _invalidationTimer;
         private int _remainingTicks;
 
-        public ShellNotifyIcon(TaskbarIconSource icon, Func<Guid> getIdentity, Action resetIdentity)
+        public ShellNotifyIcon(IShellNotifyIconSource icon, Func<Guid> getIdentity, Action resetIdentity)
         {
             IconSource = icon;
             IconSource.Changed += (_) => Update();
@@ -105,7 +105,10 @@ namespace EarTrumpet.UI.Helpers
                 {
                     if (!Shell32.Shell_NotifyIconW(Shell32.NotifyIconMessage.NIM_MODIFY, ref data))
                     {
+                        // Modification will fail when explorer.exe restarts.
                         Trace.WriteLine($"ShellNotifyIcon Update NIM_MODIFY Failed: {(uint)Marshal.GetLastWin32Error()}");
+                        _isCreated = false;
+                        Update();
                     }
                 }
                 else
@@ -230,7 +233,7 @@ namespace EarTrumpet.UI.Helpers
             IsMouseOver = isInBounds;
             if (isChanged)
             {
-                IconSource.CheckForUpdate();
+                IconSource.OnMouseOverChanged(IsMouseOver);
             }
 
             return isInBounds;

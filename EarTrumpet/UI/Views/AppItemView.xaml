@@ -36,7 +36,7 @@
                     <ctl:ImageEx x:Name="AppIcon"
                                  Width="{DynamicResource Mutable_AppIconSize}"
                                  Height="{DynamicResource Mutable_AppIconSize}"
-                                 SourceEx="{Binding Icon}"
+                                 SourceEx="{Binding}"
                                  Stretch="Fill" />
                     <Border>
                         <Border.Style>
@@ -77,7 +77,8 @@
                     </Style>
                 </Button.Style>
                 <Button.Content>
-                    <TextBlock FontSize="{DynamicResource Mutable_DeviceVolumeTextFontSize}"
+                    <TextBlock Theme:Brush.Foreground="{Binding (Theme:Brush.Foreground), RelativeSource={RelativeSource AncestorType=Button}}"
+                               FontSize="{DynamicResource Mutable_DeviceVolumeTextFontSize}"
                                Opacity="0.8"
                                Style="{StaticResource GlyphTextBlockStyle}"
                                Text="&#xE74F;" />

@@ -13,7 +13,9 @@ namespace EarTrumpet.Diagnosis
 
         public ErrorReporter()
         {
+            Debug.Assert(s_instance == null);
             s_instance = this;
+
             _listener = new CircularBufferTraceListener();
             Trace.Listeners.Clear();
             Trace.Listeners.Add(_listener);
@@ -25,7 +27,7 @@ namespace EarTrumpet.Diagnosis
             }
             catch (Exception ex)
             {
-                Trace.WriteLine(ex);
+                Trace.WriteLine($"ErrorReporter .ctor Failed: {ex}");
             }
         }
 

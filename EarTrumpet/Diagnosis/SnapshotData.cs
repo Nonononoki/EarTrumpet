@@ -1,6 +1,5 @@
 ﻿using EarTrumpet.DataModel;
 using EarTrumpet.Extensibility.Hosting;
-using EarTrumpet.Extensions;
 using EarTrumpet.Interop;
 using EarTrumpet.Interop.Helpers;
 using System;
@@ -30,7 +29,8 @@ namespace EarTrumpet.Diagnosis
             {
                 return new Dictionary<string, Func<object>>
                 {
-                    { "version", () => EarTrumpet.App.Current.GetVersion().ToString() },
+                    { "version", () => EarTrumpet.App.PackageVersion.ToString() },
+                    { "runtimeMinutes", () => (int)EarTrumpet.App.Duration.TotalMinutes },
 #if DEBUG
                     { "releaseStage", () => "development" },
 #else
@@ -66,8 +66,8 @@ namespace EarTrumpet.Diagnosis
                     { "UseAccentColor", () => SystemSettings.UseAccentColor },
                     { "AnimationsEnabled", () => SystemParameters.MenuAnimation },
                     { "IsHighContrast", () => SystemParameters.HighContrast },
-                    { "HasIdentity", () => EarTrumpet.App.Current.HasIdentity() },
-                    { "IsShuttingDown", () => ((EarTrumpet.App)EarTrumpet.App.Current).IsShuttingDown },
+                    { "HasIdentity", () => EarTrumpet.App.HasIdentity },
+                    { "IsShuttingDown", () => EarTrumpet.App.IsShuttingDown },
                     { "Culture", () =>  CultureInfo.CurrentCulture.Name },
                     { "CurrentUICulture", () => CultureInfo.CurrentUICulture.Name },
                 };

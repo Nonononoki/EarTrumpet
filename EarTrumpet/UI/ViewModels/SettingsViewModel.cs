@@ -1,23 +1,21 @@
-﻿using EarTrumpet.Extensibility;
-using EarTrumpet.UI.Helpers;
+﻿using EarTrumpet.UI.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 
 namespace EarTrumpet.UI.ViewModels
 {
     class SettingsViewModel : BindableBase, ISettingsViewModel
     {
-        public event Action Close;
-
         public string Title { get; private set; }
         public ICommand GoHome { get; }
         public BackstackViewModel Backstack { get; } = new BackstackViewModel();
         public ObservableCollection<SettingsCategoryViewModel> Categories { get; private set; }
 
-        private SimpleDialogViewModel _dialog;
-        public SimpleDialogViewModel Dialog
+        private SettingsDialogViewModel _dialog;
+        public SettingsDialogViewModel Dialog
         {
             get => _dialog;
             set
@@ -63,6 +61,8 @@ namespace EarTrumpet.UI.ViewModels
                 }
             }
         }
+
+        private WindowViewState _state;
 
         public SettingsViewModel(string title, IEnumerable<SettingsCategoryViewModel> categories)
         {
@@ -118,18 +118,38 @@ namespace EarTrumpet.UI.ViewModels
             }
         }
 
-        public void OnClosing()
+        public void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (Selected != null && !Selected.NavigatingFrom(new NavigationCookie(() => Close?.Invoke())))
+            switch (_state)
             {
-                return;
+                case WindowViewState.Open:
+                    // Reject the close if the client page requests.
+                    if (Selected != null && !Selected.NavigatingFrom(new NavigationCookie(() => Window.GetWindow((DependencyObject)sender)?.Close())))
+                    {
+                        return;
+                    }
+
+                    _state = WindowViewState.Closing;
+                    e.Cancel = true;
+                    WindowAnimationLibrary.BeginWindowExitAnimation((System.Windows.Window)sender, () =>
+                    {
+                        _state = WindowViewState.CloseReady;
+                        Window.GetWindow((DependencyObject)sender)?.Close();
+                    });
+                    break;
+                case WindowViewState.Closing:
+                    // Ignore any requests while playing the close animation.
+                    e.Cancel = true;
+                    break;
+                case WindowViewState.CloseReady:
+                    // Accept the close.
+                    break;
             }
-            Close?.Invoke();
         }
 
         public void ShowDialog(string title, string description, string btn1, string btn2, Action btn1Clicked, Action btn2Clicked)
         {
-            Dialog = new SimpleDialogViewModel
+            Dialog = new SettingsDialogViewModel
             {
                 Title = title,
                 Description = description,

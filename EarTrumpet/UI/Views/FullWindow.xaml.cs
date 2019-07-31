@@ -1,96 +1,63 @@
-﻿using EarTrumpet.DataModel;
 using EarTrumpet.Extensions;
-using EarTrumpet.Interop.Helpers;
-using EarTrumpet.UI.Helpers;
+using EarTrumpet.Interop;
 using EarTrumpet.UI.ViewModels;
-using System;
 using System.Diagnostics;
 using System.Windows;
-using System.Windows.Input;
 
 namespace EarTrumpet.UI.Views
 {
     public partial class FullWindow : Window
     {
+        private readonly double _windowAndItemSize;
         private FullWindowViewModel ViewModel => (FullWindowViewModel)DataContext;
-        private bool _isClosing;
 
         public FullWindow()
         {
             Trace.WriteLine("FullWindow .ctor");
+            Closed += (_, __) => Trace.WriteLine("FullWindow Closed");
+
+            _windowAndItemSize = (double)App.Current.Resources["WindowAndItemSize"];
 
             InitializeComponent();
-
-            SourceInitialized += FullWindow_SourceInitialized;
-            LocationChanged += FullWindow_LocationChanged;
-            SizeChanged += FullWindow_SizeChanged;
-            PreviewKeyDown += FullWindow_PreviewKeyDown;
-            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
-            FlowDirection = SystemSettings.IsRTL ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
-            Themes.Manager.Current.ThemeChanged += SetBlurColor;
-            Closed += (_, __) => Themes.Manager.Current.ThemeChanged -= SetBlurColor;
-        }
-
-        private void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e)
-        {
-            Trace.WriteLine("FullWindow SystemEvents_DisplaySettingsChanged");
-
-            Dispatcher.BeginInvoke((Action)(() => ViewModel.Dialog.IsVisible = false));
-        }
-
-        private void SetBlurColor()
-        {
-            AccentPolicyLibrary.EnableAcrylic(this, Themes.Manager.Current.ResolveRef(this, "AcrylicColor_Settings"), Interop.User32.AccentFlags.DrawAllBorders);
-        }
-
-        private void FullWindow_SourceInitialized(object sender, EventArgs e)
-        {
-            Trace.WriteLine("FullWindow FullWindow_SourceInitialized");
-
-            this.Cloak();
-            SetBlurColor();
-        }
-
-        private void FullWindow_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            ViewModel.Dialog.IsVisible = false;
-        }
-
-        private void FullWindow_LocationChanged(object sender, EventArgs e)
-        {
-            ViewModel.Dialog.IsVisible = false;
-        }
-
-        private void FullWindow_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape)
+            SourceInitialized += (_, __) => this.Cloak();
+            // Auto-size on the first layout pass.
+            SizeToContent = SizeToContent.WidthAndHeight;
+            MaxWidth = FullWindowViewModel.SmallDeviceCountLimit * _windowAndItemSize;
+            ContentRendered += (_, __) =>
             {
-                if (ViewModel.Dialog.IsVisible)
-                {
-                    ViewModel.Dialog.IsVisible = false;
-                }
-                else
-                {
-                    CloseButton_Click(null, null);
-                }
-            }
+                // Update the size as devices change:
+                ViewModel.AllDevices.CollectionChanged += OnDevicesChanged;
+                OnDevicesChanged(null, null);
+            };
         }
 
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        private void OnDevicesChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
-            Trace.WriteLine("FullWindow CloseButton_Click");
-            if (!_isClosing)
+            if (ViewModel.AllDevices.Count == FullWindowViewModel.SmallDeviceCountLimit + 1 && e != null && e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add)
             {
-                // Ensure we don't double-animate if the user is able to close us multiple ways before the window stops accepting input.
-                _isClosing = true;
-                WindowAnimationLibrary.BeginWindowExitAnimation(this, () => this.Close());
+                // We're growing from auto-size to fixed-size, we need to make space for the padding at the bottom.
+                MaxWidth = FullWindowViewModel.SmallDeviceCountLimit * _windowAndItemSize;
+                UpdateLayout();
             }
-        }
 
-        private void LightDismissBorder_PreviewMouseDown(object sender, MouseButtonEventArgs e)
-        {
-            ViewModel.Dialog.IsVisible = false;
-            e.Handled = true;
+            if (ViewModel.AllDevices.Count == 0)
+            {
+                // No devices panel with auto layout.
+                MaxWidth = double.PositiveInfinity;
+                MinHeight = 0;
+            }
+            else
+            {
+                // Pick a value so the user can't make the window too small by accident.
+                MinHeight = 200;
+                // Don't let the user expand past the last device.
+                MaxWidth = 2 /* Window borders */ + 
+                    ViewModel.AllDevices.Count * _windowAndItemSize;
+            }
+
+            SizeToContent = ViewModel.IsManyDevicesMode ? SizeToContent.Manual : SizeToContent.WidthAndHeight;
+            ResizeMode = ViewModel.IsManyDevicesMode ? ResizeMode.CanResize : ResizeMode.NoResize;
+            this.RemoveWindowStyle(User32.WS_MAXIMIZEBOX);
         }
     }
 }

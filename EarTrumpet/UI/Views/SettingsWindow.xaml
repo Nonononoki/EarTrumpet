@@ -14,8 +14,12 @@
         Height="600"
         MinWidth="770"
         MinHeight="320"
+        Theme:AcrylicBrush.Background="AcrylicColor_Settings"
         Theme:Options.Source="App"
+        b:FrameworkElementEx.DisplaySettingsChanged="{Binding DisplaySettingsChanged}"
+        b:FrameworkElementEx.FlowDirection="Auto"
         Background="Transparent"
+        Closing="{Event:Binding OnClosing}"
         ResizeMode="CanResize"
         Style="{StaticResource DialogWindowStyle}"
         TextOptions.TextFormattingMode="Display"
@@ -530,62 +534,12 @@
                            TextAlignment="Left" />
                 <Button x:Name="MinimizeButton"
                         Grid.Column="2"
-                        Click="MinimizeButton_Click">
-                    <Button.Style>
-                        <Style BasedOn="{StaticResource CaptionButtonStyle}" TargetType="Button">
-                            <Setter Property="Content" Value="&#xE921;" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Source={StaticResource ThemeManager}, Path=IsHighContrast}" Value="True">
-                                    <Setter Property="Content" Value="&#xEF2D;" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
+                        Style="{StaticResource MinimizeButton}" />
                 <Button x:Name="MaximizeRestoreButton"
                         Grid.Column="3"
-                        Click="MaximizeRestoreButton_Click">
-                    <Button.Style>
-                        <Style BasedOn="{StaticResource CaptionButtonStyle}" TargetType="Button">
-                            <Setter Property="Content" Value="&#xE922;" />
-                            <Style.Triggers>
-                                <MultiDataTrigger>
-                                    <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding WindowState, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Window}}" Value="Normal" />
-                                        <Condition Binding="{Binding Source={StaticResource ThemeManager}, Path=IsHighContrast}" Value="True" />
-                                    </MultiDataTrigger.Conditions>
-                                    <MultiDataTrigger.Setters>
-                                        <Setter Property="Content" Value="&#xEF2E;" />
-                                    </MultiDataTrigger.Setters>
-                                </MultiDataTrigger>
-
-                                <MultiDataTrigger>
-                                    <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding WindowState, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized" />
-                                        <Condition Binding="{Binding Source={StaticResource ThemeManager}, Path=IsHighContrast}" Value="True" />
-                                    </MultiDataTrigger.Conditions>
-                                    <MultiDataTrigger.Setters>
-                                        <Setter Property="Content" Value="&#xEF2F;" />
-                                    </MultiDataTrigger.Setters>
-                                </MultiDataTrigger>
-
-                                <MultiDataTrigger>
-                                    <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding WindowState, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized" />
-                                        <Condition Binding="{Binding Source={StaticResource ThemeManager}, Path=IsHighContrast}" Value="False" />
-                                    </MultiDataTrigger.Conditions>
-                                    <MultiDataTrigger.Setters>
-                                        <Setter Property="Content" Value="&#xE923;" />
-                                    </MultiDataTrigger.Setters>
-                                </MultiDataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
-
+                        Style="{StaticResource MaximizeButton}" />
                 <Button x:Name="CloseButton"
                         Grid.Column="4"
-                        Click="CloseButton_Click"
                         Style="{StaticResource CloseButtonStyle}" />
             </Grid>
             <Grid>
@@ -606,22 +560,17 @@
                         <RowDefinition Height="46" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-
                     <TextBlock HorizontalAlignment="Center"
-                               FontFamily="Segoe UI Light"
                                FontSize="26"
                                FontWeight="Light"
                                Style="{StaticResource HeadingText}"
                                Text="{x:Static resx:Resources.SettingsTitle}" />
-
-                    <ctl:SearchBox Grid.Row="1"
-                                   Width="332"
-                                   Height="32"
-                                   Margin="0"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   ItemsSource="{Binding}" />
-
+                    <ComboBox Grid.Row="1"
+                              Width="332"
+                              Height="32"
+                              Margin="0"
+                              VerticalContentAlignment="Center"
+                              b:ComboBoxEx.SearchItemsSource="{Binding}" />
                     <ctl:ListView Grid.Row="2"
                                   ItemInvoked="{Event:Binding OnInvoked}"
                                   ItemsSource="{Binding Categories}"
@@ -632,7 +581,6 @@
                             </ItemsPanelTemplate>
                         </ListView.ItemsPanel>
                     </ctl:ListView>
-
                 </Grid>
                 <!--  Subview  -->
                 <Grid>
@@ -710,10 +658,11 @@
                                 </Grid>
                             </Button.Content>
                         </Button>
-                        <ctl:SearchBox Grid.Row="2"
-                                       Height="32"
-                                       Margin="16,2,16,0"
-                                       ItemsSource="{Binding}" />
+                        <ComboBox Grid.Row="2"
+                                  Height="32"
+                                  Margin="16,2,16,0"
+                                  VerticalContentAlignment="Center"
+                                  b:ComboBoxEx.SearchItemsSource="{Binding}" />
                         <Grid Grid.Row="3">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />

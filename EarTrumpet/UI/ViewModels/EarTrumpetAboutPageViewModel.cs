@@ -1,5 +1,4 @@
-﻿using EarTrumpet.Extensions;
-using EarTrumpet.Interop.Helpers;
+﻿using EarTrumpet.Interop.Helpers;
 using EarTrumpet.UI.Helpers;
 using System;
 using System.Diagnostics;
@@ -9,19 +8,19 @@ namespace EarTrumpet.UI.ViewModels
 {
     class EarTrumpetAboutPageViewModel : SettingsPageViewModel
     {
-        public RelayCommand OpenDiagnosticsCommand { get; }
-        public RelayCommand OpenAboutCommand { get; }
-        public RelayCommand OpenFeedbackCommand { get; }
+        public ICommand OpenDiagnosticsCommand { get; }
+        public ICommand OpenAboutCommand { get; }
+        public ICommand OpenFeedbackCommand { get; }
         public string AboutText { get; }
 
-        private Action _openDiagnostics;
+        private readonly Action _openDiagnostics;
 
         public EarTrumpetAboutPageViewModel(Action openDiagnostics) : base(null)
         {
             _openDiagnostics = openDiagnostics;
             Glyph = "\xE946";
             Title = Properties.Resources.AboutTitle;
-            AboutText = $"EarTrumpet {App.Current.GetVersion()}";
+            AboutText = $"EarTrumpet {App.PackageVersion}";
 
             OpenAboutCommand = new RelayCommand(OpenAbout);
             OpenDiagnosticsCommand = new RelayCommand(OpenDiagnostics);
@@ -39,12 +38,7 @@ namespace EarTrumpet.UI.ViewModels
             _openDiagnostics.Invoke();
         }
 
-        private void OpenFeedbackHub()
-        {
-            Trace.WriteLine($"EarTrumpetAboutPageViewModel OpenFeedbackHub");
-            ProcessHelper.StartNoThrow("windows-feedback:///?appid=40459File-New-Project.EarTrumpet_1sdd7yawvg6ne!EarTrumpet");
-        }
-
+        private void OpenFeedbackHub() => ProcessHelper.StartNoThrow("windows-feedback:///?appid=40459File-New-Project.EarTrumpet_1sdd7yawvg6ne!EarTrumpet");
         private void OpenAbout() => ProcessHelper.StartNoThrow("https://github.com/File-New-Project/EarTrumpet");
     }
 }

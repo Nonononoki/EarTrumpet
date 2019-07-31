@@ -1,7 +1,6 @@
-﻿using EarTrumpet.DataModel;
+using EarTrumpet.DataModel.WindowsAudio;
 using EarTrumpet.Diagnosis;
 using EarTrumpet.Extensibility.Hosting;
-using EarTrumpet.Interop;
 using EarTrumpet.Interop.Helpers;
 using EarTrumpet.UI.Helpers;
 using EarTrumpet.UI.ViewModels;
@@ -18,13 +17,15 @@ namespace EarTrumpet
 {
     public partial class App
     {
-        public static readonly string AssetBaseUri = "pack://application:,,,/EarTrumpet;component/Assets/";
+        public static bool IsShuttingDown { get; private set; }
+        public static bool HasIdentity { get; private set; }
+        public static Version PackageVersion { get; private set; }
+        public static TimeSpan Duration => s_appTimer.Elapsed;
 
-        public FlyoutViewModel FlyoutViewModel { get; private set; }
-        public FlyoutWindow FlyoutWindow { get; private set; }
-        public DeviceCollectionViewModel PlaybackDevicesViewModel { get; private set; }
-        public bool IsShuttingDown { get; private set; }
-
+        private static readonly Stopwatch s_appTimer = Stopwatch.StartNew();
+        private FlyoutViewModel _flyoutViewModel;
+        private FlyoutWindow _flyoutWindow;
+        private DeviceCollectionViewModel _collectionViewModel;
         private ShellNotifyIcon _trayIcon;
         private WindowHolder _mixerWindow;
         private WindowHolder _settingsWindow;
@@ -34,6 +35,9 @@ namespace EarTrumpet
         private void OnAppStartup(object sender, StartupEventArgs e)
         {
             Exit += (_, __) => IsShuttingDown = true;
+            HasIdentity = PackageHelper.CheckHasIdentity();
+            PackageVersion = PackageHelper.GetVersion(HasIdentity);
+            _settings = new AppSettings();
             _errorReporter = new ErrorReporter();
 
             if (SingleInstanceAppMutex.TakeExclusivity())
@@ -44,8 +48,7 @@ namespace EarTrumpet
                 {
                     ContinueStartup();
                 }
-                catch (Exception ex) when (ex.StackTrace.Contains(
-                    "MS.Internal.Text.TextInterface.FontFamily.GetFirstMatchingFont"))
+                catch (Exception ex) when (IsCriticalFontLoadFailure(ex))
                 {
                     ErrorReporter.LogWarning(ex);
                     OnCriticalFontLoadFailure();
@@ -61,59 +64,20 @@ namespace EarTrumpet
         {
             ((UI.Themes.Manager)Resources["ThemeManager"]).Load();
 
-            _settings = new AppSettings();
-            _settings.FlyoutHotkeyTyped += () => FlyoutViewModel.OpenFlyout(InputType.Keyboard);
-            _settings.MixerHotkeyTyped += () => _mixerWindow.OpenOrClose();
-            _settings.SettingsHotkeyTyped += () => _settingsWindow.OpenOrBringToFront();
-            _mixerWindow = new WindowHolder(CreateMixerExperience);
-            _settingsWindow = new WindowHolder(CreateSettingsExperience);
-            PlaybackDevicesViewModel = new DeviceCollectionViewModel(DataModel.WindowsAudio.WindowsAudioFactory.Create(DataModel.WindowsAudio.AudioDeviceKind.Playback), _settings);
-            PlaybackDevicesViewModel.Ready += (_, __) => CompleteStartup();
-            PlaybackDevicesViewModel.TrayPropertyChanged += () => UpdateTrayTooltipAndIcon();
-            FlyoutViewModel = new FlyoutViewModel(PlaybackDevicesViewModel, () => _trayIcon.SetFocus());
-            FlyoutWindow = new FlyoutWindow(FlyoutViewModel);
+            var deviceManager = WindowsAudioFactory.Create(AudioDeviceKind.Playback);
+            deviceManager.Loaded += (_, __) => CompleteStartup();
+            _collectionViewModel = new DeviceCollectionViewModel(deviceManager, _settings);
 
-            CreateTrayExperience();
-        }
-
-        private void CreateTrayExperience()
-        {
-            if (!SndVolSSO.SystemIconsAreAvailable())
-            {
-                _settings.UseLegacyIcon = true;
-            }
-
-            TaskbarIconSource iconSource = null;
-            iconSource = new TaskbarIconSource(icon =>
-            {
-                if (_settings.UseLegacyIcon)
-                {
-                    icon?.Dispose();
-                    icon = IconHelper.LoadIconForTaskbar(SystemSettings.IsSystemLightTheme ? $"{AssetBaseUri}Application.ico" : $"{AssetBaseUri}Tray.ico");
-                }
-
-                double iconFillPercent = ((SndVolSSO.IconId)iconSource.Tag) == SndVolSSO.IconId.NoDevice && !_settings.UseLegacyIcon ? 0.4 : 1;
-                if (SystemParameters.HighContrast)
-                {
-                    icon = IconHelper.ColorIcon(icon, iconFillPercent, _trayIcon.IsMouseOver ? SystemColors.HighlightTextColor : SystemColors.WindowTextColor);
-                }
-                else if (SystemSettings.IsSystemLightTheme && !_settings.UseLegacyIcon)
-                {
-                    icon = IconHelper.ColorIcon(icon, iconFillPercent, System.Windows.Media.Colors.Black);
-                }
-                return icon;
-            },
-            () => $"hc={SystemParameters.HighContrast} {(SystemParameters.HighContrast ? $"mouse={_trayIcon.IsMouseOver}" : "")} dpi={WindowsTaskbar.Dpi} theme={SystemSettings.IsSystemLightTheme} legacy={_settings.UseLegacyIcon}");
-            _settings.UseLegacyIconChanged += (_, __) => iconSource.CheckForUpdate();
-
-            _trayIcon = new ShellNotifyIcon(iconSource, () => _settings.TrayIconIdentity, _settings.ResetTrayIconIdentity);
-            _trayIcon.PrimaryInvoke += (_, type) => FlyoutViewModel.OpenFlyout(type);
-            _trayIcon.SecondaryInvoke += (_, __) => _trayIcon.ShowContextMenu(GetTrayContextMenuItems());
-            _trayIcon.TertiaryInvoke += (_, __) => PlaybackDevicesViewModel.Default?.ToggleMute.Execute(null);
-            _trayIcon.Scrolled += (_, wheelDelta) => PlaybackDevicesViewModel.Default?.IncrementVolume(Math.Sign(wheelDelta) * 2);
+            _trayIcon = new ShellNotifyIcon(
+                new TaskbarIconSource(_collectionViewModel, _settings), () => _settings.TrayIconIdentity, _settings.ResetTrayIconIdentity);
             Exit += (_, __) => _trayIcon.IsVisible = false;
+            _collectionViewModel.TrayPropertyChanged += () => _trayIcon.SetTooltip(_collectionViewModel.GetTrayToolTip());
 
-            UpdateTrayTooltipAndIcon();
+            _flyoutViewModel = new FlyoutViewModel(_collectionViewModel, () => _trayIcon.SetFocus());
+            _flyoutWindow = new FlyoutWindow(_flyoutViewModel);
+            // Initialize the FlyoutWindow last because its Show/Hide cycle will pump messages, causing UI frames
+            // to be executed, breaking the assumption that startup is complete.
+            _flyoutWindow.Initialize();
         }
 
         private void CompleteStartup()
@@ -121,30 +85,47 @@ namespace EarTrumpet
             AddonManager.Load();
             Exit += (_, __) => AddonManager.Shutdown();
 
-            _trayIcon.IsVisible = true;
-            DisplayFirstRunExperience();
-        }
+#if DEBUG
+            DebugHelpers.Add();
+#endif
+            _mixerWindow = new WindowHolder(CreateMixerExperience);
+            _settingsWindow = new WindowHolder(CreateSettingsExperience);
 
-        private void UpdateTrayTooltipAndIcon()
-        {
-            var iconType = (PlaybackDevicesViewModel.Default == null) ? SndVolSSO.IconId.NoDevice : PlaybackDevicesViewModel.Default.GetSndVolIcon();
-            _trayIcon.IconSource.Tag = iconType;
-            _trayIcon.IconSource.Source = SndVolSSO.GetPath(iconType);
-            _trayIcon.SetTooltip(PlaybackDevicesViewModel.GetTrayToolTip());
+            _settings.FlyoutHotkeyTyped += () => _flyoutViewModel.OpenFlyout(InputType.Keyboard);
+            _settings.MixerHotkeyTyped += () => _mixerWindow.OpenOrClose();
+            _settings.SettingsHotkeyTyped += () => _settingsWindow.OpenOrBringToFront();
+            _settings.RegisterHotkeys();
+
+            _trayIcon.PrimaryInvoke += (_, type) => _flyoutViewModel.OpenFlyout(type);
+            _trayIcon.SecondaryInvoke += (_, __) => _trayIcon.ShowContextMenu(GetTrayContextMenuItems());
+            _trayIcon.TertiaryInvoke += (_, __) => _collectionViewModel.Default?.ToggleMute.Execute(null);
+            _trayIcon.Scrolled += (_, wheelDelta) => _collectionViewModel.Default?.IncrementVolume(Math.Sign(wheelDelta) * 2);
+            _trayIcon.SetTooltip(_collectionViewModel.GetTrayToolTip());
+            _trayIcon.IsVisible = true;
+
+            DisplayFirstRunExperience();
         }
 
         private void DisplayFirstRunExperience()
         {
-            if (!_settings.HasShownFirstRun)
+            if (!_settings.HasShownFirstRun
+#if DEBUG
+                || Keyboard.IsKeyDown(Key.LeftCtrl)
+#endif
+                )
             {
                 Trace.WriteLine($"App DisplayFirstRunExperience Showing welcome dialog");
                 _settings.HasShownFirstRun = true;
 
-                var viewModel = new WelcomeViewModel();
-                var dialog = new DialogWindow { DataContext = viewModel };
-                viewModel.Close = new RelayCommand(() => dialog.SafeClose());
+                var dialog = new DialogWindow { DataContext = new WelcomeViewModel() };
                 dialog.Show();
             }
+        }
+
+        private bool IsCriticalFontLoadFailure(Exception ex)
+        {
+            return ex.StackTrace.Contains("MS.Internal.Text.TextInterface.FontFamily.GetFirstMatchingFont") ||
+                   ex.StackTrace.Contains("MS.Internal.Text.Line.Format");
         }
 
         private void OnCriticalFontLoadFailure()
@@ -166,15 +147,16 @@ namespace EarTrumpet
                 Environment.Exit(0);
             }).Start();
 
-            Thread.CurrentThread.Suspend();
+            // Stop execution because callbacks to the UI thread will likely cause another cascading font error.
+            new AutoResetEvent(false).WaitOne();
         }
 
         private IEnumerable<ContextMenuItem> GetTrayContextMenuItems()
         {
-            var ret = new List<ContextMenuItem>(PlaybackDevicesViewModel.AllDevices.OrderBy(x => x.DisplayName).Select(dev => new ContextMenuItem
+            var ret = new List<ContextMenuItem>(_collectionViewModel.AllDevices.OrderBy(x => x.DisplayName).Select(dev => new ContextMenuItem
             {
                 DisplayName = dev.DisplayName,
-                IsChecked = dev.Id == PlaybackDevicesViewModel.Default?.Id,
+                IsChecked = dev.Id == _collectionViewModel.Default?.Id,
                 Command = new RelayCommand(() => dev.MakeDefaultDevice()),
             }));
 
@@ -221,18 +203,6 @@ namespace EarTrumpet
             return ret;
         }
 
-        private Window CreateMixerExperience()
-        {
-            var viewModel = new FullWindowViewModel(PlaybackDevicesViewModel);
-            var window = new FullWindow { DataContext = viewModel };
-            window.Closing += (_, __) =>
-            {
-                _mixerWindow.Destroyed();
-                viewModel.Close();
-            };
-            return window;
-        }
-
         private Window CreateSettingsExperience()
         {
             var defaultCategory = new SettingsCategoryViewModel(
@@ -255,28 +225,10 @@ namespace EarTrumpet
                 allCategories.AddRange(AddonManager.Host.SettingsItems.Select(a => a.Get(AddonManager.FindAddonInfoForObject(a))));
             }
 
-            bool canClose = false;
             var viewModel = new SettingsViewModel(EarTrumpet.Properties.Resources.SettingsWindowText, allCategories);
-            var window = new SettingsWindow { DataContext = viewModel };
-            window.CloseClicked += () => viewModel.OnClosing();
-            viewModel.Close += () =>
-            {
-                canClose = true;
-                window.SafeClose();
-            };
-            window.Closing += (_, e) =>
-            {
-                if (canClose)
-                {
-                    _settingsWindow.Destroyed();
-                }
-                else
-                {
-                    e.Cancel = true;
-                    viewModel.OnClosing();
-                }
-            };
-            return window;
+            return new SettingsWindow { DataContext = viewModel };
         }
+
+        private Window CreateMixerExperience() => new FullWindow { DataContext = new FullWindowViewModel(_collectionViewModel) };
     }
 }

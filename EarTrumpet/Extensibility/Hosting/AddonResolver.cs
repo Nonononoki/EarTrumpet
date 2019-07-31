@@ -1,5 +1,4 @@
-﻿using EarTrumpet.Extensions;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
@@ -27,7 +26,7 @@ namespace EarTrumpet.Extensibility.Hosting
             Trace.WriteLine($"AddonResolver Load");
             try
             {
-                if (App.Current.HasIdentity())
+                if (App.HasIdentity)
                 {
                     catalogs.AddRange(Package.Current.Dependencies.
                         Where(pkg => pkg.IsOptional).
@@ -64,10 +63,9 @@ namespace EarTrumpet.Extensibility.Hosting
                 Trace.WriteLine($"AddonResolver SelectAddon: {path}");
                 var versionRoot = Path.Combine(path, "Versions");
                 var versions = Directory.GetDirectories(versionRoot).Select(f => Path.GetFileName(f)).Select(f => Version.Parse(f)).OrderBy(v => v);
-                var earTrumpetVersion = ((App)App.Current).GetVersion();
                 foreach (var version in versions.Reverse())
                 {
-                    if (version <= earTrumpetVersion)
+                    if (version <= App.PackageVersion)
                     {
                         var cat = new DirectoryCatalog(Path.Combine(versionRoot, version.ToString()), "EarTrumpet*.dll");
                         _addonDirectoryPaths.Add(cat.Path);

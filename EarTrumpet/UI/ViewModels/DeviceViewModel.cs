@@ -1,7 +1,6 @@
 ﻿using EarTrumpet.DataModel.Audio;
 using EarTrumpet.DataModel.WindowsAudio;
 using EarTrumpet.Extensions;
-using EarTrumpet.Interop;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -54,22 +53,21 @@ namespace EarTrumpet.UI.ViewModels
             }
         }
 
-        protected IAudioDevice _device;
-        protected IAudioDeviceManager _deviceManager;
+        protected readonly IAudioDevice _device;
+        protected readonly IAudioDeviceManager _deviceManager;
+        protected readonly WeakReference<DeviceCollectionViewModel> _parent;
         private bool _isDisplayNameVisible;
         private DeviceIconKind _iconKind;
-        protected WeakReference<DeviceCollectionViewModel> _parent;
 
         public DeviceViewModel(DeviceCollectionViewModel parent, IAudioDeviceManager deviceManager, IAudioDevice device) : base(device)
         {
             _deviceManager = deviceManager;
             _device = device;
             _parent = new WeakReference<DeviceCollectionViewModel>(parent);
-
             Apps = new ObservableCollection<IAppItemViewModel>();
 
-            _device.PropertyChanged += Device_PropertyChanged;
-            _device.Groups.CollectionChanged += Sessions_CollectionChanged;
+            _device.PropertyChanged += OnPropertyChanged;
+            _device.Groups.CollectionChanged += OnCollectionChanged;
 
             foreach (var session in _device.Groups)
             {
@@ -81,11 +79,11 @@ namespace EarTrumpet.UI.ViewModels
 
         ~DeviceViewModel()
         {
-            _device.PropertyChanged -= Device_PropertyChanged;
-            _device.Groups.CollectionChanged -= Sessions_CollectionChanged;
+            _device.PropertyChanged -= OnPropertyChanged;
+            _device.Groups.CollectionChanged -= OnCollectionChanged;
         }
 
-        private void Device_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void OnPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(_device.IsMuted) ||
                 e.PropertyName == nameof(_device.Volume))
@@ -104,7 +102,10 @@ namespace EarTrumpet.UI.ViewModels
         {
             base.UpdatePeakValueForeground();
 
-            foreach (var app in Apps) app.UpdatePeakValueForeground();
+            foreach (var app in Apps)
+            {
+                app.UpdatePeakValueForeground();
+            }
         }
 
         private void UpdateMasterVolumeIcon()
@@ -119,7 +120,7 @@ namespace EarTrumpet.UI.ViewModels
                 {
                     IconKind = DeviceIconKind.Mute;
                 }
-                else if (_device.Volume >= 0.65f)
+                else if (_device.Volume >= 0.66f)
                 {
                     IconKind = DeviceIconKind.Bar3;
                 }
@@ -127,18 +128,14 @@ namespace EarTrumpet.UI.ViewModels
                 {
                     IconKind = DeviceIconKind.Bar2;
                 }
-                else if (_device.Volume > 0f)
-                {
-                    IconKind = DeviceIconKind.Bar1;
-                }
                 else
                 {
-                    IconKind = DeviceIconKind.Mute;
+                    IconKind = DeviceIconKind.Bar1;
                 }
             }
         }
 
-        private void Sessions_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private void OnCollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             switch (e.Action)
             {
@@ -165,7 +162,7 @@ namespace EarTrumpet.UI.ViewModels
         {
             var newSession = new AppItemViewModel(this, session);
 
-            foreach(var app in Apps)
+            foreach (var app in Apps)
             {
                 if (app.DoesGroupWith(newSession))
                 {
@@ -182,7 +179,7 @@ namespace EarTrumpet.UI.ViewModels
 
         public void AppMovingToThisDevice(TemporaryAppItemViewModel app)
         {
-            app.Expired += App_Expired;
+            app.Expired += OnAppExpired;
 
             foreach (var childApp in app.ChildApps)
             {
@@ -190,7 +187,7 @@ namespace EarTrumpet.UI.ViewModels
             }
 
             bool hasExistingAppGroup = false;
-            foreach(var a in Apps)
+            foreach (var a in Apps)
             {
                 if (a.DoesGroupWith(app))
                 {
@@ -205,12 +202,12 @@ namespace EarTrumpet.UI.ViewModels
             }
         }
 
-        private void App_Expired(object sender, EventArgs e)
+        private void OnAppExpired(object sender, EventArgs e)
         {
             var app = (TemporaryAppItemViewModel)sender;
             if (Apps.Contains(app))
             {
-                app.Expired -= App_Expired;
+                app.Expired -= OnAppExpired;
                 Apps.Remove(app);
             }
         }
@@ -220,22 +217,6 @@ namespace EarTrumpet.UI.ViewModels
             if (app is TemporaryAppItemViewModel)
             {
                 Apps.Remove(app);
-            }
-        }
-
-        public SndVolSSO.IconId GetSndVolIcon()
-        {
-            switch (IconKind)
-            {
-                case DeviceIconKind.Mute:
-                    return SndVolSSO.IconId.Muted;
-                case DeviceIconKind.Bar1:
-                    return SndVolSSO.IconId.SpeakerOneBar;
-                case DeviceIconKind.Bar2:
-                    return SndVolSSO.IconId.SpeakerTwoBars;
-                case DeviceIconKind.Bar3:
-                    return SndVolSSO.IconId.SpeakerThreeBars;
-                default: throw new NotImplementedException(IconKind.ToString());
             }
         }
 
