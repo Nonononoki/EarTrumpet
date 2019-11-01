@@ -1,5 +1,7 @@
 # EarTrumpet
 
+Source code: https://github.com/Nonononoki/EarTrumpet.git
+
 ![Ear Trumpet Screenshot](./Graphics/hero1.gif)
 
 ## Features
