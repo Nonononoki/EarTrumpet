@@ -26,13 +26,7 @@ Source code: https://github.com/File-New-Project/EarTrumpet
 ## Install
 Download EarTrumpet from the releases: https://github.com/Nonononoki/EarTrumpet/releases/latest
 
-## Documentation
-* [Technical Information](./EarTrumpet/README.md)
-* [Compiling EarTrumpet](./COMPILING.md)
-* [Contributing to EarTrumpet](./CONTRIBUTING.md)
-* [Information Collected And Transmitted By EarTrumpet](./PRIVACY.md)
-* [Project License](./LICENSE)
-* [Change Log](./CHANGELOG.md)
+- Optional: Put a shortcut of the .exe file to your startup folder in Windows
 
 ## Supported operating systems
 - Windows 10 1803 (April 2018 Update)
