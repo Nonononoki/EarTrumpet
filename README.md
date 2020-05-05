@@ -1,3 +1,6 @@
+You can now finally install EarTrumpet outside of the Windows Store! https://chocolatey.org/packages/eartrumpet
+This repo is outdated, use chocolatey instead :)
+
 # EarTrumpet
 
 Source code: https://github.com/File-New-Project/EarTrumpet
